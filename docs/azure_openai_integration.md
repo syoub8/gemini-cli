@@ -27,14 +27,10 @@ LiteLLM acts as the brain's command center, translating and directing requests f
     pip install 'litellm[proxy]'
     ```
 
-2.  **Edit the Configuration File**:
-    Use the `litellm_config.yaml` file located in the project root. This file is pre-configured with the recommended settings. You only need to replace the placeholders with your specific Azure OpenAI deployment details.
+2.  **Review the Configuration File**:
+    The `litellm_config.yaml` file in the project root is pre-configured with recommended settings. You only need to replace the placeholders with your specific Azure OpenAI deployment details.
 
-    **Key settings in `litellm_config.yaml`**:
-    - **`model_list`**: Defines your Azure OpenAI models. The file is set up to use a powerful reasoning model (`o4-mini` or `o3`), a fast model (`gpt-4o-mini`), and an embedding model.
-    - **`reasoning_effort`**: A parameter within `litellm_params` that allows you to control the reasoning depth of the `o`-series models (`"low"`, `"medium"`, `"high"`).
-    - **`model_group_alias`**: Maps the model names that `gemini-cli` uses (`gemini-2.5-pro`, etc.) to the Azure models you defined.
-    - **`drop_params: true`**: This is important as it automatically removes parameters not supported by Azure `o`-series models (like `temperature`), preventing potential errors.
+    **Note for Corporate Proxy Users**: If your system uses a corporate proxy (via `HTTPS_PROXY` environment variable), LiteLLM will automatically use it for its outbound requests to Azure. No extra configuration is needed in this file for LiteLLM to work.
 
 ## Step 2: Configure `gemini-cli` for Azure Context
 
@@ -69,18 +65,37 @@ Now, you can launch the LiteLLM proxy and run `gemini-cli`.
     litellm --config litellm_config.yaml &
     ```
 
-3.  **Set Environment for `gemini-cli`**:
-    In a new terminal, configure `gemini-cli` to use the proxy. The `GEMINI_API_KEY` is required by the CLI, but the value can be a dummy string as authentication is handled by LiteLLM.
+3.  **Set Dummy Gemini API Key**:
+    The `GEMINI_API_KEY` is required by the CLI, but the value can be a dummy string as authentication is handled by LiteLLM.
     ```bash
-    export HTTPS_PROXY="http://127.0.0.1:4000"
     export GEMINI_API_KEY="sk-dummy-key-for-azure"
     ```
 
-4.  **Run `gemini-cli`**:
-    You are now ready to use `gemini-cli` with Azure OpenAI as the backend.
+4.  **Run `gemini-cli` using the `--proxy` flag**:
+    This is the crucial step. Use the `--proxy` flag to direct `gemini-cli`'s traffic to the local LiteLLM instance. This flag overrides any system-wide `HTTPS_PROXY` settings for `gemini-cli` only.
+
+    **For interactive mode:**
     ```bash
-    gemini "What are the key features of the Azure o-series models?"
+    gemini --proxy "http://127.0.0.1:4000"
     ```
+
+    **For non-interactive mode:**
+    ```bash
+    gemini --proxy "http://127.0.0.1:4000" "What are the key features of the Azure o-series models?"
+    ```
+
+---
+
+## Troubleshooting SSL Errors in Corporate Environments
+If your corporate proxy performs SSL/TLS inspection, you might encounter certificate errors. To resolve this, you may need to tell Python (which runs LiteLLM) to trust your company's root CA certificate.
+
+Set the following environment variable before starting LiteLLM:
+```bash
+export SSL_CERT_FILE=/path/to/your/corporate-ca-bundle.crt
+litellm --config litellm_config.yaml &
+```
+
+---
 
 ## Understanding Feature Differences
 
