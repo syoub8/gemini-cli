@@ -419,6 +419,7 @@ export async function loadCliConfig(
     fileDiscoveryService: fileService,
     bugCommand: settings.bugCommand,
     model: argv.model!,
+    modelContextWindowMap: settings.modelContextWindowMap,
     extensionContextFilePaths,
     maxSessionTurns: settings.maxSessionTurns ?? -1,
     experimentalAcp: argv.experimentalAcp || false,

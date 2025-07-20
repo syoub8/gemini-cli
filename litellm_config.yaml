@@ -1,0 +1,54 @@
+# LiteLLM Proxy Configuration for Gemini CLI with Azure OpenAI
+#
+# This configuration file is the best practice for using gemini-cli in an Azure OpenAI-only environment.
+# Before use, please replace the placeholders with your own Azure OpenAI environment values.
+#
+# How to run:
+# 1. Install LiteLLM with proxy support: `pip install 'litellm[proxy]'`
+# 2. Set your Azure OpenAI API key as an environment variable: `export AZURE_API_KEY="your_azure_api_key"`
+# 3. Start the LiteLLM proxy with this configuration file: `litellm --config litellm_config.yaml`
+
+# model_list: Define all Azure OpenAI models to be used.
+model_list:
+  # Main model: For complex tasks and coding (replaces gemini-2.5-pro)
+  - model_name: azure-reasoning-model
+    litellm_params:
+      model: azure/<your-o4-mini-or-o3-deployment-name>
+      api_base: https://<your-endpoint-name>.openai.azure.com/
+      api_key: os.environ/AZURE_API_KEY
+      api_version: "2025-03-01-preview" # API version that supports reasoning_effort
+      context_window: 200000
+      reasoning_effort: "medium" # Adjust reasoning depth: "low", "medium", or "high"
+
+  # Fast/cheap model: For simple questions, summaries, and fallbacks (replaces gemini-2.5-flash)
+  - model_name: azure-fast-model
+    litellm_params:
+      model: azure/<your-gpt-4o-mini-deployment-name>
+      api_base: https://<your-endpoint-name>.openai.azure.com/
+      api_key: os.environ/AZURE_API_KEY
+      api_version: "2024-07-18"
+      context_window: 128000
+
+  # Embedding model: For file search and similarity (replaces gemini-embedding-001)
+  - model_name: azure-embedding-model
+    litellm_params:
+      model: azure/<your-embedding-v3-large-deployment-name>
+      api_base: https://<your-endpoint-name>.openai.azure.com/
+      api_key: os.environ/AZURE_API_KEY
+      api_version: "2024-02-01"
+      context_window: 8192
+
+# router_settings: Route requests from gemini-cli to the appropriate Azure models.
+router_settings:
+  model_group_alias:
+    "gemini-2.5-pro": "azure-reasoning-model"
+    "gemini-2.5-flash": "azure-fast-model"
+    "gemini-embedding-001": "azure-embedding-model"
+
+# litellm_settings: Basic proxy settings
+litellm_settings:
+  host: 127.0.0.1
+  port: 4000
+  debug: true
+  # Automatically drop unsupported parameters (like temperature for o-series) to prevent errors.
+  drop_params: true

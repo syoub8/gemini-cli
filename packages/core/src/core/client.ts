@@ -576,7 +576,8 @@ This is the cursor position in the file:
     // Don't compress if not forced and we are under the limit.
     if (
       !force &&
-      originalTokenCount < this.COMPRESSION_TOKEN_THRESHOLD * tokenLimit(model)
+      originalTokenCount <
+        this.COMPRESSION_TOKEN_THRESHOLD * tokenLimit(model, this.config)
     ) {
       return null;
     }
