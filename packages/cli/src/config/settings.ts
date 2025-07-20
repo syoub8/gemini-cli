@@ -93,6 +93,9 @@ export interface Settings {
   // A map of tool names to their summarization settings.
   summarizeToolOutput?: Record<string, SummarizeToolOutputSettings>;
 
+  // A map of model names to their context window size.
+  modelContextWindowMap?: Record<string, number>;
+
   // Add other settings here.
   ideMode?: boolean;
 }
