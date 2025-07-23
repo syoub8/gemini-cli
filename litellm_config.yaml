@@ -1,0 +1,35 @@
+# litellm_config.yaml
+# Please replace the placeholder values like <YOUR_...> with your actual Azure OpenAI details.
+
+model_list:
+  # 1. Define your primary chat model from Azure OpenAI
+  - model_name: azure-chat-model # An internal name for LiteLLM to use
+    litellm_params:
+      model: azure/gpt-4.1 # Your deployment name for a model like gpt-4o
+      api_base: os.environ/AZURE_API_BASE
+      api_version: os.environ/AZURE_API_VERSION # Use a recent, valid API version
+      api_key: os.environ/AZURE_API_KEY # Tells LiteLLM to read the key from an environment variable
+
+  # 2. Define your embedding model from Azure OpenAI
+  - model_name: azure-embedding-model # An internal name for LiteLLM to use
+    litellm_params:
+      model: azure/text-embedding-ada-002 # Your deployment name for a model like text-embedding-3-large
+      api_base: os.environ/AZURE_API_BASE
+      api_version: os.environ/AZURE_API_VERSION
+      api_key: os.environ/AZURE_API_KEY
+
+router_settings:
+    # This section maps the model names that Gemini CLI requests
+    # to the models you defined above.
+    model_group_alias:
+        # Map general-purpose models to your Azure chat deployment
+        "gemini-1.5-pro": "azure-chat-model"
+        "gemini-pro": "azure-chat-model" # Alias for older default
+
+        # Map the high-speed "flash" model to the same Azure chat deployment
+        # (or a different one if you have a specific high-speed deployment)
+        "gemini-1.5-flash": "azure-chat-model"
+
+        # Map embedding models to your Azure embedding deployment
+        "text-embedding-004": "azure-embedding-model"
+        "embedding-001": "azure-embedding-model" # Alias for older default
