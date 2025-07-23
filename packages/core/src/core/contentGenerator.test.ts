@@ -60,6 +60,35 @@ describe('createContentGenerator', () => {
     });
     expect(generator).toBe((mockGenerator as GoogleGenAI).models);
   });
+
+  it('should configure for LiteLLM and set base URL', async () => {
+    const mockSetBaseUrl = vi.fn();
+    const mockGenerator = {
+      models: {},
+      _apiClient: {
+        setBaseUrl: mockSetBaseUrl,
+      },
+    };
+    vi.mocked(GoogleGenAI).mockImplementation(() => mockGenerator as any);
+
+    const liteLLMUrl = 'http://localhost:4000';
+    await createContentGenerator(
+      {
+        model: 'test-model',
+        apiKey: 'litellm-key',
+        authType: AuthType.USE_LITELLM,
+        liteLLMBaseUrl: liteLLMUrl,
+      },
+      mockConfig,
+    );
+
+    expect(GoogleGenAI).toHaveBeenCalledWith({
+      apiKey: 'litellm-key',
+      vertexai: false,
+      httpOptions: expect.any(Object),
+    });
+    expect(mockSetBaseUrl).toHaveBeenCalledWith(liteLLMUrl);
+  });
 });
 
 describe('createContentGeneratorConfig', () => {
@@ -134,6 +163,23 @@ describe('createContentGeneratorConfig', () => {
       AuthType.USE_VERTEX_AI,
     );
     expect(config.apiKey).toBeUndefined();
+    expect(config.vertexai).toBeUndefined();
+  });
+
+  it('should prioritize LiteLLM config if LITELLM_BASE_URL is set', async () => {
+    process.env.LITELLM_BASE_URL = 'http://localhost:4000';
+    process.env.GEMINI_API_KEY = 'litellm-key';
+    // Set other auth types to ensure LiteLLM takes precedence
+    process.env.GOOGLE_API_KEY = 'google-key';
+
+    const config = await createContentGeneratorConfig(
+      mockConfig,
+      AuthType.USE_VERTEX_AI, // Even if another auth type is passed, LiteLLM should override
+    );
+
+    expect(config.authType).toBe(AuthType.USE_LITELLM);
+    expect(config.liteLLMBaseUrl).toBe('http://localhost:4000');
+    expect(config.apiKey).toBe('litellm-key');
     expect(config.vertexai).toBeUndefined();
   });
 });

@@ -42,6 +42,7 @@ export enum AuthType {
   LOGIN_WITH_GOOGLE = 'oauth-personal',
   USE_GEMINI = 'gemini-api-key',
   USE_VERTEX_AI = 'vertex-ai',
+  USE_LITELLM = 'litellm', // Added for LiteLLM
   CLOUD_SHELL = 'cloud-shell',
 }
 
@@ -51,6 +52,7 @@ export type ContentGeneratorConfig = {
   vertexai?: boolean;
   authType?: AuthType | undefined;
   proxy?: string | undefined;
+  liteLLMBaseUrl?: string; // Added for LiteLLM
 };
 
 export function createContentGeneratorConfig(
@@ -61,6 +63,7 @@ export function createContentGeneratorConfig(
   const googleApiKey = process.env.GOOGLE_API_KEY || undefined;
   const googleCloudProject = process.env.GOOGLE_CLOUD_PROJECT || undefined;
   const googleCloudLocation = process.env.GOOGLE_CLOUD_LOCATION || undefined;
+  const liteLLMBaseUrl = process.env.LITELLM_BASE_URL || undefined;
 
   // Use runtime model from config if available; otherwise, fall back to parameter or default
   const effectiveModel = config.getModel() || DEFAULT_GEMINI_MODEL;
@@ -70,6 +73,15 @@ export function createContentGeneratorConfig(
     authType,
     proxy: config?.getProxy(),
   };
+
+  // LiteLLM takes precedence if its environment variable is set
+  if (liteLLMBaseUrl) {
+    contentGeneratorConfig.authType = AuthType.USE_LITELLM;
+    contentGeneratorConfig.liteLLMBaseUrl = liteLLMBaseUrl;
+    // LiteLLM proxy might require an API key, which we'll pass via the same GEMINI_API_KEY variable
+    contentGeneratorConfig.apiKey = geminiApiKey;
+    return contentGeneratorConfig;
+  }
 
   // If we are using Google auth or we are in Cloud Shell, there is nothing else to validate for now
   if (
@@ -115,6 +127,7 @@ export async function createContentGenerator(
       'User-Agent': `GeminiCLI/${version} (${process.platform}; ${process.arch})`,
     },
   };
+
   if (
     config.authType === AuthType.LOGIN_WITH_GOOGLE ||
     config.authType === AuthType.CLOUD_SHELL
@@ -125,6 +138,34 @@ export async function createContentGenerator(
       gcConfig,
       sessionId,
     );
+  }
+
+  // Handle USE_LITELLM as a special case
+  if (config.authType === AuthType.USE_LITELLM) {
+    if (!config.liteLLMBaseUrl) {
+      throw new Error('LITELLM_BASE_URL is not set for LiteLLM auth type.');
+    }
+    const googleGenAI = new GoogleGenAI({
+      // Pass the LiteLLM key as the apiKey to the SDK
+      apiKey: config.apiKey === '' ? undefined : config.apiKey,
+      vertexai: false,
+      httpOptions,
+    });
+
+    // HACK: Access the internal apiClient and change its base URL.
+    // This is not a public API of the SDK and might break in future versions.
+    // We cast to `any` to bypass TypeScript's type checking for this internal property.
+    const internalApiClient = (googleGenAI as any)._apiClient;
+    if (internalApiClient && typeof internalApiClient.setBaseUrl === 'function') {
+      internalApiClient.setBaseUrl(config.liteLLMBaseUrl);
+    } else {
+      // Fallback or error if the internal structure changes.
+      throw new Error(
+        'Could not access internal apiClient to set LiteLLM base URL. The @google/genai SDK structure may have changed.',
+      );
+    }
+
+    return googleGenAI.models;
   }
 
   if (
